@@ -2,7 +2,7 @@
 
 > 本文是 Day0 流程对**精度探针**（`$PAGENT/model-precision-oob-probe/`，npu-precision-agent 仓内 skill）的接入契约声明：**何时调、怎么调、要什么证据、失败怎么路由**。探针的字段明细与判据定义**以 agent 仓为准**（`$PAGENT/model-precision-oob-probe/references/integration-bot.md`、`references/strength-ladder.md`），本文只引用不复制——两边抄写必然漂移。
 >
-> 归位一句话：**探针只供证不裁决**。它对着已拉起的服务产出机器可读的证据包（`precision_evidence_packet.json`），"这个门禁算过了没有"由主控按 `.claude/agents/accuracy.md` 裁决；探针不写 tracker、不翻阶段状态、不合并代码。探针（体检）与 npu-precision-agent 深路径（会诊）是两个东西——本文只接入前者；探针 FAIL 后的立案与深路径转诊见 §6。
+> 归位一句话：**探针只供证不裁决**。它对着已拉起的服务产出机器可读的证据包（`precision_evidence_packet.json`），"这个门禁算过了没有"由主控按 `.claude/agents/accuracy.md` 裁决；探针不写 tracker、不翻阶段状态、不合并代码。探针（体检）与 npu-precision-agent 深路径（会诊）是两个东西——本文只接入前者；探针 FAIL 后的立案与深路径转诊见 §5。
 
 ## 1. 前置：解析与版本锚点
 
@@ -39,7 +39,7 @@
 |---|---|---|
 | `readiness.ok=false` 或服务不可达 | **环境/服务问题** | 不产生精度 FAIL；G3 挂起，回服务拉起/环境自检（tester Phase 1 失败动作） |
 | `collected` 单 case 带 `error`（malformed 响应等） | **服务问题** | G3 挂起，路由 vLLM 服务侧排查（版本 / 启动参数），不进精度裁决 |
-| 服务健康 + 判据不过（packet `verdict=FAIL`） | **真精度 FAIL** | G3 不过：主控裁决——弱档签字降级（§4）或立案转深路径（§6）；packet 自动带 `escalation=full_pipeline` |
+| 服务健康 + 判据不过（packet `verdict=FAIL`） | **真精度 FAIL** | G3 不过：主控裁决——弱档签字降级（§4）或立案转深路径（§5）；packet 自动带 `escalation=full_pipeline` |
 | case 全过但反假阴性 hint 未全 ok（`verdict=ANOMALY`） | **证据有缺口** | 不得当 PASS：补齐缺口重跑，或主控显式签字接受缺口（记录进 tracker 备注） |
 | Phase 2 被主控裁决暂缓 | — | 探针不执行（探针属真实权重段组成）；G3 未过=未验证；恢复后从 Phase 0 重走 |
 
@@ -53,7 +53,7 @@
 ## 5. 与深路径的接续（FAIL 之后）
 
 1. 探针 FAIL 的证据包**不含** `problem_card_ref`（立案是裁决之后的事，时序上探针不可能先拿到引用）；`escalation=full_pipeline` 是唯一转深信号。
-2. **立案转换（`oob_handoff`）落地前为人工步骤**：主控依据 packet（symptom / fingerprint / first_divergence / 反假阴性核对结果）构造 `problem_card.json`（格式见 `$PAGENT/examples/problem_card.example.json`），前置确认可稳定复现；`oob_handoff` 自动转换落地后此步才自动化——在那之前不得宣称自动立案。
+2. **立案转换（`oob_handoff`，已自动化）**：主控裁决 FAIL 后运行 `$PAGENT/model-precision-oob-probe/scripts/oob_handoff.py --packet <packet> --request <request> --collected <collected> --out problem_card.json`——脚本前置检查可立案性（非 FAIL / 复现不稳 `BLOCKED_FLAKY` / 采集失败一律退 4 且不落盘，stderr 带 `REASON:`），通过后产出 `problem_card.json`（`source: bot_oob`，格式契约见 `$PAGENT/examples/problem_card.example.json`）并默认原子回填 `problem_card_ref` 进 packet（`--no-backfill-ref` 关闭）；脚本不可用或拒绝且主控判断应立案时，回退人工构造（前置确认可稳定复现），回退属例外而非常态。
 3. 立案后进入 npu-precision-agent 深路径（triage → 定位 → 修复 → 验证），其编排与门禁见该仓 `AGENTS.md` / `workflows/pipeline.md`——bot 主控此时只做委托与验收，不代行深路径内部编排。
 
 ## 6. 红线（两侧共同遵守）

@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Day0 环境变量注入（SessionStart hook）
 #
-# 目的：把 Day0 流程的四个路径注入每条 Bash 命令，供主控与子代理直接使用——
+# 目的：把 Day0 流程的五个路径注入每条 Bash 命令，供主控与子代理直接使用——
 #   ASCENDBOT_FILE_PATH  Day0 输出根目录（tracker.md / 各 Phase 产物所在）
 #   VENV                推理环境 venv 根路径（含 bin/，解释器 = $VENV/bin/python）
 #   VLLM_ASCEND         vllm-ascend 仓根
 #   VLLM                上游 vLLM 源码路径
+#   PAGENT               npu-precision-agent 仓根（精度探针；未配置则自动跳过）
 #
 # 背景：Bash 工具每条命令独立进程，脚本里的 export 出不了 subshell，也不跨调用
 # 持久。SKILL.md 原先靠「主控把字面绝对路径写进每条命令与 Task prompt」传递，
@@ -89,11 +90,12 @@ emit() {
 # 目录位置不会）。已存在于 shell 的 CLAUDE_ENV_FILE 内容按 >> 追加，不覆盖。
 emit ASCENDBOT_FILE_PATH "$DIR"
 
-# VENV / $VLLM / $VLLM_ASCEND 均为立项参数，tracker 实例化时填入环境信息块
+# VENV / $VLLM / $VLLM_ASCEND / $PAGENT 均为立项参数，tracker 实例化时填入环境信息块
 # （Phase 0 §1 对 $VLLM / $VLLM_ASCEND 做安装一致性校验）；未填时为空
-# （当次会话仍需用字面路径，见 SKILL.md 步骤 1）。
+# （当次会话仍需用字面路径，见 SKILL.md 步骤 1）。$PAGENT 占位未填（探针未接入）时同样跳过。
 emit VENV "$(read_field venv || true)"
 emit VLLM_ASCEND "$(read_field VLLM_ASCEND || true)"
 emit VLLM "$(read_field VLLM || true)"
+emit PAGENT "$(read_field PAGENT || true)"
 
 exit 0

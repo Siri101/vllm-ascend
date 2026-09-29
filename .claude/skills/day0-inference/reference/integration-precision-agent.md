@@ -27,6 +27,8 @@
 
 **锚点（可选，`--anchor`）**：② 路径本就要跑 transformers 参考实现——把其 greedy 参考输出转成 `$PAGENT/examples/anchor.example.json` 格式传入，L2 逐 token 对比即可判；无锚点 → 探针自动落在 L0/L1 并显式披露档位，不得声称做过 token 级对齐。
 
+**离线演练**：无 NPU 环境时可以 `fake://` 前缀作 base_url 走通五步（探针读本地 fixture 当响应，如 `$PAGENT/tests/fixtures/fake_completions_ok.json`），用于接入自检与判据回归——演练产物**不是**真机证据，不得随 G3 归档。
+
 ## 3. 失败三分类与裁决语义
 
 服务是 bot 侧拉起的，**探针失败 ≠ 精度失败**，按下表归因路由：

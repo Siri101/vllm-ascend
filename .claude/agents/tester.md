@@ -48,6 +48,11 @@ cd $VLLM_ASCEND && <venv>/bin/pip install --no-build-isolation -v -e . --no-deps
 <venv>/bin/python -c "import vllm, vllm_ascend; print(vllm.__file__); print(vllm_ascend.__file__)"
 ```
 
+**字节码缓存卫生（重装后必做）**：editable 安装不清理源码树里的旧 `__pycache__`——上一代码状态的陈旧字节码可能被优先加载，造成「以为验了新代码，实际跑旧的」（假通过的典型来源；精度探针的反假阴性核对亦依赖本项，见 `reference/integration-precision-agent.md` 步 4）：
+```bash
+find "$VLLM" "$VLLM_ASCEND" -name __pycache__ -type d -prune -exec rm -rf {} + 2>/dev/null || true
+```
+
 **模型文件卫生**（dummy 不读权重，但 tokenizer 需要真实词表）：确认 tokenizer 文件非 git-LFS pointer——pointer 只有几百字节且内容含 `git-lfs` 字样：
 ```bash
 head -c 256 <MODEL_PATH>/tiktoken.model <MODEL_PATH>/tokenizer* 2>/dev/null | rg -l 'git-lfs' || true
@@ -95,7 +100,7 @@ curl -s http://127.0.0.1:8000/v1/chat/completions \
 
 ### Phase 2 真实权重（G3 精度门禁）
 
-> **暂缓分支（仅主控显式裁决，你无权自行跳过）**：机器未 ready（权重不可用 / 显存不足以全层加载 / NPU 环境未就绪）时，主控会在调用 prompt 与 tracker S1.4 备注中显式标注「Phase 2 暂缓 + 原因」。收到暂缓指令时：本段不执行，交接报告的 Phase 2 段写「暂缓」+ 原因 + 已验证边界（Phase 1 覆盖了什么、哪些真实权重独有项未覆盖：权重映射核对 / 加载期 missing·mismatch 检查 / sanity 内容校验 / 精度基线对比）+ 恢复条件，并显式声明 **G3 未执行 = 未通过，精度未验证**。你自己发现环境不满足时**不得自行跳过**——按本段失败处理（错误签名 + 证据）上报主控，由主控裁决暂缓还是回退 Developer。恢复执行时从 Phase 0 重新走（环境可能已变，清理 / 重装 / 冒烟都要重做），不得只补本段。
+> **暂缓分支（仅主控显式裁决，你无权自行跳过）**：机器未 ready（权重不可用 / 显存不足以全层加载 / NPU 环境未就绪）时，主控会在调用 prompt 与 tracker S1.4 备注中显式标注「Phase 2 暂缓 + 原因」。收到暂缓指令时：本段不执行，交接报告的 Phase 2 段写「暂缓」+ 原因 + 已验证边界（Phase 1 覆盖了什么、哪些真实权重独有项未覆盖：权重映射核对 / 加载期 missing·mismatch 检查 / sanity 内容校验 / 精度基线对比）+ 恢复条件，并显式声明 **G3 未执行 = 未通过，精度未验证**。你自己发现环境不满足时**不得自行跳过**——按本段失败处理（错误签名 + 证据）上报主控，由主控裁决暂缓还是回退 Developer。恢复执行时从 Phase 0 重新走（环境可能已变，清理 / 重装 / 冒烟都要重做），不得只补本段。暂缓期间**不执行探针调用**（探针属本段第 5 步组成）——不得以 Phase 1 的 dummy 服务产出探针证据。
 
 1. **重新拉起（真实权重）**：按 Phase 1 第 1 步的基线命令去掉 `--load-format dummy` 重新拉起（先 `mkdir -p <输出根目录>/accuracy`，日志改写 `accuracy/serve-real.log`）。
 2. **加载期检查（配合 Designer 判定表的加载期差异列）**：`accuracy/serve-real.log` 里 grep `not initialized|size mismatch|shape mismatch`——出现任一项都是阻断项，回 Developer 修 loader 再放行，不能带着 missing key 继续。匹配文案随 vLLM 版本变化——**校准动作**：先 `grep -rn "not initialized" $VLLM/vllm/model_executor/models/` 确认当前安装版的实际提示字符串（当前版本实测为 "Following weights were not initialized from"）；`Unexpected extra config keys` 属配置项校验，与权重缺失无关，不作阻断项。
@@ -112,12 +117,13 @@ curl -s http://127.0.0.1:8000/v1/chat/completions \
    - **sanity 请求输出内容正常**（上述三项检查通过，输出原文归档）；
    - eager + bf16 精度基线达标（对齐 Designer 的 Golden 基线说明）。
    > dummy 不等于真实权重，**仅凭 dummy 证据签收属流程违规**。
-5. 失败动作：回退 Developer 修权重映射 / 量化路径 / KV·QK norm 分片。**G3 未过禁止进入评审发布（流程 Phase 4）。**
+5. **精度基线机器证据（探针，供主控裁决）**：`$PAGENT` 已配置且探针版本锚点复核一致时，按 `.claude/skills/day0-inference/reference/integration-precision-agent.md` 的五步调用链执行——实例化委托请求 → `probe_service.py` 探服务 → `collect_outputs.py` 采输出（cases 复用 accuracy.md ②③ 已落盘题集；有 ② 参考输出转成的锚点则 `emit_packet.py --anchor` 传入）→ 依本段 Phase 0 证据**回填四项反假阴性核对**（逐项 ok + 证据路径，含上面的 pycache 清理）→ `emit_packet.py` 出包。产物落 `<输出根目录>/accuracy/probe/`。探针**只供证不裁决**：packet（strength / verdict / fingerprint）随 G3 证据交主控，弱档由主控签字降级。`$PAGENT` 未配置 → 本步跳过，tracker 备注声明「探针未接入」，基线达标走 accuracy.md 人工判据。
+6. 失败动作：回退 Developer 修权重映射 / 量化路径 / KV·QK norm 分片。**G3 未过禁止进入评审发布（流程 Phase 4）。**
 
 ### 产出 & 交接
 
 - **Phase 1**：`smoke/serve-dummy.log` + 冒烟结果（HTTP 码、输出片段）。
-- **Phase 2**：`accuracy/serve-real.log`（无 fatal 错误、无权重缺失/尺寸不匹配命中）+ 精度基线对比证据；**暂缓时**：无 accuracy 产物，交接报告显式声明 G3 未验证 + 原因 + 恢复条件（禁止用 Phase 1 的 dummy 证据冒充真实权重结论）。
+- **Phase 2**：`accuracy/serve-real.log`（无 fatal 错误、无权重缺失/尺寸不匹配命中）+ 精度基线对比证据 + 探针证据包（`accuracy/probe/packet.json` 及中间件；`$PAGENT` 未配置时无此件并在交接报告声明「探针未接入」）；**暂缓时**：无 accuracy 产物（含探针），交接报告显式声明 G3 未验证 + 原因 + 恢复条件（禁止用 Phase 1 的 dummy 证据冒充真实权重结论）。
 - **false-ready / 失败**记录：错误签名 + 已走的 fallback 阶梯，未解决的交给 Reviewer 或回退 Developer。
 
 ## 交付物

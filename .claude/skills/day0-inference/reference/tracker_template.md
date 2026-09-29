@@ -20,6 +20,8 @@
   - $VLLM（上游 vLLM 仓库根，**立项参数**——缺省仓根同级 `../vllm`，立项环境安装的基准；preflight §1 实测「vllm 仓库根」须与此一致，不一致即安装错位，回 SKILL.md 步骤 1 重装）：<path>
   - vLLM 版本锚点（preflight §1 采集的 `__version__`；各阶段消费 $VLLM 前复核一致，漂移即上报主控）：<version>
   - $VLLM_ASCEND（vllm-ascend 仓根）：<path>
+  - $PAGENT（npu-precision-agent 仓根，含 model-precision-oob-probe/——精度探针的机器证据载体；未接入则保持占位不填）：<path>
+  - 探针版本锚点（$PAGENT 的 commit，立项/更新探针仓时填；调探针前 `git -C $PAGENT rev-parse HEAD` 复核，漂移即停上报，禁止自动 checkout）：<commit>
   - **环境安装记录**（立项脚本 init_day0_dir.sh 落盘于 `install_record.md`，实例化本跟踪单时**逐字抄入**——**缺失一律视为未安装**，「其他字段有值」不构成已安装的证据）：
     - 安装时间 / 安装时 $VLLM 的 commit（`git -C $VLLM rev-parse HEAD`）：<date> / <commit>
     - 安装校验输出（`<venv>/bin/python -c "import vllm, vllm_ascend; print(vllm.__file__); print(vllm_ascend.__file__)"` 的**原文**，禁止凭记录转述）：<output>

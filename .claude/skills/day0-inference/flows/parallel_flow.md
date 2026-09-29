@@ -1,6 +1,6 @@
 # Parallel Flow（占位）— Day0 Stage 2：并行量化版本（跑得稳）
 
-> ⚠️ **占位声明**：本 flow 尚未实现。主控 `SKILL.md` 推进到 Stage 2 时，应**显式提示【并行量化 flow 尚未接入】**，输出本文件的框架定义供人工或后续版本接管，不得自行编造执行步骤。
+> ⚠️ **占位声明**：本 flow **除精度环节（见下方"精度环节（已实现）"节）外均未实现**。主控 `SKILL.md` 推进到 Stage 2 时，应**显式提示【并行量化 flow 除精度环节外尚未接入】**，输出本文件的框架定义供人工或后续版本接管，不得自行编造执行步骤；精度环节按已实现口径执行。
 
 ## 阶段目标（对齐 AscendBot 四阶段定义）
 
@@ -24,6 +24,10 @@
 - 并行切分策略需随量化权重分布动态重算；
 - 量化策略 × 并行方案组合多，验证矩阵需显式裁剪；
 - KV cache 方案（block size、C8、DCP 分片）与并行策略联动校验。
+
+## 精度环节（已实现）
+
+S2.4 量化精度对齐按 `.claude/skills/day0-inference/reference/precision-alignment-stages.md` 的 S2.4 参数卡执行：探针五步对比 **S1 接力锚点**（`accuracy/baseline/`），主判据锚点逐 token 一致（L2）；量化是近似——Designer 显式定义容差 + 主控签字才可放宽（容差以题集判分承载）。产物落 `parallel/probe/`；门禁通过后 `emit_baseline.py` 采 `parallel/baseline/` 接力锚点交 S3。失败按三分类路由，劣化归因指向量化/并行配置变更。
 
 ## 产物目录（规划）
 

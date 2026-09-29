@@ -47,13 +47,13 @@ description: "Day0 推理四阶段流程控制：Stage 1 Golden 基线（跑起�
 
 - **目标**：按量化策略与 KV 缓存方案设计并行策略（TP/EP/DCP/PCP），完成部署运行，精度正确——**资源使用合理的版本**。
 - **flow**：`flows/parallel_flow.md`（⬜ 占位，按固定四步中的占位处置执行）。
-- **出口判据**：并行约束校验通过 + 量化精度对齐 golden 基线（判据草案见 flow）。
+- **出口判据**：并行约束校验通过 + 量化精度对齐 golden 基线（判据草案见 flow）。**精度环节已接入**——机器证据与接力锚点见 `reference/precision-alignment-stages.md`。
 
 ### 步骤 4：Stage 3 特性叠加（跑得快）
 
 - **目标**：系统性集成 5+ 性能特性（Prefix Caching / 投机解码 / ACLGraph / FlashComm / EP 等），叠加后精度无劣化——**高性能版本**。
 - **flow**：`flows/feature_flow.md`（⬜ 占位，按固定四步中的占位处置执行）。
-- **出口判据**：逐项叠加逐项回归 + 组合矩阵覆盖（判据草案见 flow）。
+- **出口判据**：逐项叠加逐项回归 + 组合矩阵覆盖（判据草案见 flow）。**逐特性精度环节已接入**（见 `reference/precision-alignment-stages.md`）。
 
 **Stage 1 与 Stage 3 的边界**：Stage 1 **全程 eager**，只做正确性基线（能跑、结果对）——**不做 benchmark、不做服务矩阵、不做任何图模式（ACLGraph/piecewise）验证**；图模式与系统性的特性组合叠加（5+ 特性逐项回归）属于 Stage 3；服务矩阵、benchmark 与性能达标属于 Stage 4——Stage 3 以 Stage 1 的 eager 正确性证据为起点，在其上叠加图模式与特性。
 
@@ -61,7 +61,7 @@ description: "Day0 推理四阶段流程控制：Stage 1 Golden 基线（跑起�
 
 - **目标**：瓶颈分析定向调优 + 精度闭环修复，性能达标、精度合格——**出口达标版本**。
 - **flow**：`flows/performance_flow.md`（⬜ 占位，按固定四步中的占位处置执行）。
-- **出口判据**：性能达目标值 + 全量精度通过 + 服务矩阵全通过 + 出口交付物齐备（判据草案见 flow）。
+- **出口判据**：性能达目标值 + 全量精度通过 + 服务矩阵全通过 + 出口交付物齐备（判据草案见 flow）。**全量精度环节已接入**（对 golden 接力锚点总对账，见 `reference/precision-alignment-stages.md`）。
 
 ### 步骤 6：自演进咨询（飞轮，任务完成后执行）
 
@@ -83,6 +83,8 @@ Stage 1 出口：eager+bf16 精度基线（golden 基线）
     → Stage 3：每叠加一项特性对齐上一配置 → 产出特性叠加基线 + benchmark
       → Stage 4：定向调优前后对比 + 全量精度终验 → 出口签收
 ```
+
+接力锚点机制（每阶段出口经 `emit_baseline.py` 采集 `precision_baseline.json`、门禁通过才准采、失效规则与归档位置）见 `reference/precision-alignment-stages.md`。
 
 ## 关键管理纪律
 

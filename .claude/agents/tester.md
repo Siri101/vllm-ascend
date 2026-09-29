@@ -117,7 +117,7 @@ curl -s http://127.0.0.1:8000/v1/chat/completions \
    - **sanity 请求输出内容正常**（上述三项检查通过，输出原文归档）；
    - eager + bf16 精度基线达标（对齐 Designer 的 Golden 基线说明）。
    > dummy 不等于真实权重，**仅凭 dummy 证据签收属流程违规**。
-5. **精度基线机器证据（探针，供主控裁决）**：`$PAGENT` 已配置且探针版本锚点复核一致时，按 `.claude/skills/day0-inference/reference/integration-precision-agent.md` 的五步调用链执行——实例化委托请求 → `probe_service.py` 探服务 → `collect_outputs.py` 采输出（cases 复用 accuracy.md ②③ 已落盘题集；有 ② 参考输出转成的锚点则 `emit_packet.py --anchor` 传入）→ 依本段 Phase 0 证据**回填四项反假阴性核对**（逐项 ok + 证据路径，含上面的 pycache 清理）→ `emit_packet.py` 出包。产物落 `<输出根目录>/accuracy/probe/`。探针**只供证不裁决**：packet（strength / verdict / fingerprint）随 G3 证据交主控，弱档由主控签字降级。`$PAGENT` 未配置 → 本步跳过，tracker 备注声明「探针未接入」，基线达标走 accuracy.md 人工判据。
+5. **精度基线机器证据（探针，供主控裁决）**：`$PAGENT` 已配置且探针版本锚点复核一致时，按 `.claude/skills/day0-inference/reference/integration-precision-agent.md` 的五步调用链执行——实例化委托请求 → `probe_service.py` 探服务 → `collect_outputs.py` 采输出（cases 复用 accuracy.md ②③ 已落盘题集；有 ② 参考输出转成的锚点则 `emit_packet.py --anchor` 传入）→ 依本段 Phase 0 证据**回填四项反假阴性核对**（逐项 ok + 证据路径，含上面的 pycache 清理）→ `emit_packet.py` 出包。产物落 `<输出根目录>/accuracy/probe/`。探针**只供证不裁决**：packet（strength / verdict / fingerprint）随 G3 证据交主控，弱档由主控签字降级。`$PAGENT` 未配置 → 本步跳过，tracker 备注声明「探针未接入」，基线达标走 accuracy.md 人工判据。G3 通过、S1.4 签收前另执行**接力锚点采集**：`emit_baseline.py` 把本配置 collected 转 `<输出根目录>/accuracy/baseline/precision_baseline.json`，供 S2.4 对比（纪律与参数见 `reference/precision-alignment-stages.md` §1）——门禁未过/暂缓不得采集。
 6. 失败动作：回退 Developer 修权重映射 / 量化路径 / KV·QK norm 分片。**G3 未过禁止进入评审发布（流程 Phase 4）。**
 
 ### 产出 & 交接

@@ -27,6 +27,8 @@
 
 **锚点（可选，`--anchor`）**：② 路径本就要跑 transformers 参考实现——把其 greedy 参考输出转成 `$PAGENT/examples/anchor.example.json` 格式传入，L2 逐 token 对比即可判；无锚点 → 探针自动落在 L0/L1 并显式披露档位，不得声称做过 token 级对齐。
 
+**接力锚点（门禁通过后）**：五步之后，若本阶段精度门禁通过，执行者调 `$PAGENT/model-precision-oob-probe/scripts/emit_baseline.py` 把本配置采集结果转成下一阶段的对比锚点（`precision_baseline.json`）；每阶段的锚点来源与归档位置见 `precision-alignment-stages.md` 的阶段参数卡——门禁未过/暂缓不得采集。
+
 **离线演练**：无 NPU 环境时可以 `fake://` 前缀作 base_url 走通五步（探针读本地 fixture 当响应，如 `$PAGENT/tests/fixtures/fake_completions_ok.json`），用于接入自检与判据回归——演练产物**不是**真机证据，不得随 G3 归档。
 
 ## 3. 失败三分类与裁决语义

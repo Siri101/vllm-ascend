@@ -53,7 +53,7 @@
 | S2.1 并行/量化方案设计 | designer | 并行策略与量化方案 | 未开始 | `parallel/` | — |
 | S2.2 方案实现 | developer | 改动清单 + UT | 未开始 | `parallel/` | — |
 | S2.3 部署运行验证 | tester | 目标并行配置拉起 + 冒烟 | 未开始 | `parallel/` | — |
-| S2.4 量化精度对齐 golden 基线 | accuracy | 精度对比报告 | 未开始 | `parallel/` | — |
+| S2.4 量化精度对齐 golden 基线（精度环节已实现） | accuracy | 探针证据包（`parallel/probe/`）+ 接力锚点（`parallel/baseline/`）+ 精度对比报告 | 未开始 | `parallel/` | — |
 | S2.5 评审签收 | reviewer | 评审报告 | 未开始 | `parallel/` | — |
 
 签收单：`parallel/signoff.md`
@@ -67,7 +67,7 @@
 | S3.1 特性清单与叠加顺序设计 | designer | 特性子集 + 叠加顺序 | 未开始 | `feature/` | — |
 | S3.2 特性实现 | developer | 改动清单 + UT | 未开始 | `feature/` | — |
 | S3.3 逐项叠加验证（含组合矩阵） | tester | 特性叠加矩阵 + benchmark | 未开始 | `feature/` | — |
-| S3.4 叠加精度回归 | accuracy | 精度回归报告（对齐上一配置） | 未开始 | `feature/` | — |
+| S3.4 叠加精度回归（精度环节已实现） | accuracy | 每特性探针证据包（`feature/probe/<feature>/`）+ 最终接力锚点（`feature/baseline/`）+ 回归报告 | 未开始 | `feature/` | — |
 | S3.5 评审签收 | reviewer | 评审报告 | 未开始 | `feature/` | — |
 
 签收单：`feature/signoff.md`
@@ -79,7 +79,7 @@
 | 步骤 | 执行 agent | 产出 | 状态 | 产物路径 | 备注 |
 |---|---|---|---|---|---|
 | S4.1 瓶颈分析与定向调优 | performance | profiling 报告 + 调优前后对比 | 未开始 | `acceptance/` | — |
-| S4.2 全量精度终验 + 服务矩阵 | accuracy | 精度验收报告（golden 基线 + 组合矩阵）+ 服务矩阵报告 | 未开始 | `acceptance/` | — |
+| S4.2 全量精度终验 + 服务矩阵（精度环节已实现） | accuracy | 探针证据包（`acceptance/probe/`，对 golden 接力锚点总对账）+ 组合矩阵抽检 + 服务矩阵报告 | 未开始 | `acceptance/` | — |
 
 签收单：`acceptance/signoff.md`
 

@@ -27,6 +27,9 @@ description: "Day0 推理流程的精度子代理。Stage 2/3 在各 flow 的精
 
 - Stage 1 全程 eager 对齐基线；开图后与 eager 输出的对比在 Stage 3 图模式验收时进行（素材见 `.claude/agents/performance.md`）。
 - 逐层最大误差、基准指标 vs Golden 的记录粒度按 Designer 的 Golden 基线描述执行。
+- **基线判据的机器执行载体（精度探针）**：`$PAGENT`（npu-precision-agent 仓根，tracker「环境信息」块）配置且探针版本锚点复核一致时，② 的「greedy 输出 token 序列完全一致」判据与固定题集的机器判读由精度探针执行——五步调用链、失败三分类、产物落位（`accuracy/probe/`）见 `.claude/skills/day0-inference/reference/integration-precision-agent.md`。锚点取 ② 已要跑的 transformers 参考输出（转 `$PAGENT/examples/anchor.example.json` 格式）；cases 复用 ②③ 已落盘的 prompt 集/题集，探针不另造题集；`repeats=2` 才有 L0 自洽证据。
+- **分层纪律**：准出 3 的 sanity（语义底线，本流程执行）与探针判据（形态稳定 + 逐 token）不可互替——都做、都归档；探针报告 `token_checked_cases` < `case_count`（L1 落到文本级 oracle）时不得当作 token 级通过。探针**只供证不裁决**：证据包随 G3 交主控，按 `strength` 档位裁决，弱档由主控**签字降级**（签名记录留 tracker 备注）。
+- **$PAGENT 未配置**：探针不可用，基线达标走本文件人工判据，tracker 备注显式声明「探针未接入」——不是免检，③ 逐题判分等证据要求不变。
 
 ### 失败路由
 

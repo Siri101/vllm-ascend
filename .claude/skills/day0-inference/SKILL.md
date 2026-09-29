@@ -17,6 +17,7 @@ description: "Day0 推理四阶段流程控制：Stage 1 Golden 基线（跑起�
    - **模型本地路径**：指到含 `config.json` 的目录；用户只给 HF repo id 时，先确认是否下载、下载到哪；
    - **served-model-name**（缺省 = 路径末段）、**TP 大小**（缺省 = 1）、**硬件代次**、**checkpoint 代次**（同模型不同代次的 chat template / effort 映射可能不同）；
    - **推理环境 python 解释器路径**：装好 vllm / torch_npu 的 venv——解释器选错会使 preflight 采集全量「不可得」，下游判定全部失真；
+   - **（可选）npu-precision-agent 仓根 $PAGENT**：精度探针（G3 基线达标的机器证据载体）所在仓——提供则实例化 tracker 时填 `$PAGENT` 行与探针版本锚点，G3 按探针证据包裁决（见 `reference/integration-precision-agent.md`）；不提供则 G3 走 accuracy.md 人工判据并在 tracker 备注声明「探针未接入」；
 1. **立项脚本（环境清理 + 安装 + 建目录，一条命令；在装好 venv 的目标主机上执行，不涉及 NPU 硬件）**：从 vllm-ascend 仓根运行
    ```bash
    .claude/skills/day0-inference/scripts/init_day0_dir.sh <模型路径> <venv根路径> <$VLLM> <served-model-name>
@@ -26,7 +27,7 @@ description: "Day0 推理四阶段流程控制：Stage 1 Golden 基线（跑起�
    - **stdout → 主控记录**：本文与各文档中的 `$ASCENDBOT_FILE_PATH` 均为该字面路径的记号；**主控的 shell 命令与所有 Task prompt 一律使用字面值**（子代理靠 prompt 传参，不继承环境变量）；
    - **`.day0/.current` → 环境变量注入**：SessionStart hook（`.claude/hooks/day0-env.sh`）从该文件定位本次目录，把 `ASCENDBOT_FILE_PATH` / `VENV` / `VLLM_ASCEND` / `VLLM` 注入后续每条 Bash 命令。**hook 只在会话启动时运行**——本步骤发生在会话中途，故**当次会话内这四个变量仍为空，须用字面路径**；`/clear` 或新开会话后自动生效。定位优先级：`DAY0_DIR` 环境变量 > `.current` 指针 > tracker.md 最新修改的 run 兜底；恢复旧 run 或高频迭代时用 `scripts/day0_use.sh <目录|--latest>` 切换指针（切换后须 `/clear` 或新开会话才生效）；
    - **tracker 环境信息块 → 持久真值**：可跨会话恢复的唯一记录（见下一步）。
-2. **建跟踪单并填充环境信息块**：把 `.claude/skills/day0-inference/reference/tracker_template.md` 实例化为 `$ASCENDBOT_FILE_PATH/tracker.md`，「当前阶段」置为 Stage 1。**实例化时必须填充「输出根目录」行 + 「环境信息」块的已知项**（输出根目录 / work-dir / venv 解释器路径 / served-model-name / TP / 硬件代次 / max-model-len / $VLLM / $VLLM_ASCEND），并从 `$ASCENDBOT_FILE_PATH/install_record.md` **逐字抄入「环境安装记录」四字段**——缺失一律视为未安装，「其他字段有值」不构成已安装的证据——「输出根目录」是该变量的持久真值，缺它则会话中断后无从恢复；Phase 0 §1 只做一致性校验（实测安装指向 ≠ 记录值 → 环境安装错位，回步骤 1 重跑立项脚本），不再承担采集回填。跟踪单把每个阶段拆成**逐 agent 的步骤行**（步骤 / 执行 agent / 产出 / 门禁 / 状态 / 产物路径），是四阶段流程的**单一状态源**。
+2. **建跟踪单并填充环境信息块**：把 `.claude/skills/day0-inference/reference/tracker_template.md` 实例化为 `$ASCENDBOT_FILE_PATH/tracker.md`，「当前阶段」置为 Stage 1。**实例化时必须填充「输出根目录」行 + 「环境信息」块的已知项**（输出根目录 / work-dir / venv 解释器路径 / served-model-name / TP / 硬件代次 / max-model-len / $VLLM / $VLLM_ASCEND / $PAGENT 与探针版本锚点——已配置探针时），并从 `$ASCENDBOT_FILE_PATH/install_record.md` **逐字抄入「环境安装记录」四字段**——缺失一律视为未安装，「其他字段有值」不构成已安装的证据——「输出根目录」是该变量的持久真值，缺它则会话中断后无从恢复；Phase 0 §1 只做一致性校验（实测安装指向 ≠ 记录值 → 环境安装错位，回步骤 1 重跑立项脚本），不再承担采集回填。跟踪单把每个阶段拆成**逐 agent 的步骤行**（步骤 / 执行 agent / 产出 / 门禁 / 状态 / 产物路径），是四阶段流程的**单一状态源**。
 3. **产物约束（全局）**：全部产物统一存放 `$ASCENDBOT_FILE_PATH` 下——跟踪单、阶段签收单、各 Phase/Stage 产物子目录（`preflight/` `design/` `impl/` `smoke/` `accuracy/` `review/`，及 Stage 2-4 的 `parallel/` `feature/` `acceptance/`）。各文档中 `./.day0/<model>/` 的 `<model>` 占位即指 `$ASCENDBOT_FILE_PATH`。
 
 **每个 Stage 的执行动作（固定四步）**：

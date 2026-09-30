@@ -62,4 +62,4 @@
 
 - 与 P1 完全一致：失败三分类（环境/服务/精度）、ANOMALY=证据有缺口、探针只供证不裁决、弱档签字降级归主控——见 `integration-precision-agent.md` §3/§4。
 - 阶段差异只在**归因粒度**：S3.4 的 FAIL 直接指向"刚叠加的那一项特性"（接力棒保证对比对象唯一）；S2.4 的 FAIL 指向量化/并行配置变更。
-- FAIL 转深路径的立案转换已由 `oob_handoff` 自动化（`integration-precision-agent.md` §5）：主控裁决后运行脚本产出 `problem_card.json`（`source: bot_oob`，一落地即带 criterion 与 ≥3 次逐次取证 `repro_evidence`）；`BLOCKED_FLAKY`（复现不稳，含分类一致重跑不足 3 次——采集须 `--repeats 3`）拒立案——按三向路由补跑复现后再试，不得带病进深路径。立案后**自动委托深路径**（P3，同节：staging 四件套 + 委托 prompt 模板）；深路径报修复后，主控重跑探针按**同一接力棒**复核，`verdict=PASS` 才记账——接力棒机制在此闭合。
+- FAIL 转深路径的立案转换已由 `oob_handoff` 自动化（`integration-precision-agent.md` §5）：主控裁决后运行脚本产出 `problem_card.json`（`source: bot_oob`，一落地即带 criterion 与 ≥3 次逐次取证 `repro_evidence`）；`BLOCKED_FLAKY`（复现不稳，含分类一致重跑不足 3 次——采集须 `--repeats 3`）拒立案——按三向路由补跑复现后再试，不得带病进深路径。立案后**自动委托深路径**（P3，同节：staging 四件套 + 委托 prompt 模板）；深路径报修复后，主控重跑探针按**同一接力棒**复核，`verdict=PASS` 才记账——接力棒机制在此闭合。委托终态新增 **`BLOCKED_HANG`**（W3）：深路径长任务超时收割（`run_job --kill`）后转人工，机器证据 = run 目录 `jobs.json` 的 reaped 记录 + `block_report.json`；主控确认挂死根因后可再委托、不自动盲重试（详见 `integration-precision-agent.md` §5 终态记账）。

@@ -54,7 +54,26 @@
 
 1. 探针 FAIL 的证据包**不含** `problem_card_ref`（立案是裁决之后的事，时序上探针不可能先拿到引用）；`escalation=full_pipeline` 是唯一转深信号。
 2. **立案转换（`oob_handoff`，已自动化）**：主控裁决 FAIL 后运行 `$PAGENT/model-precision-oob-probe/scripts/oob_handoff.py --packet <packet> --request <request> --collected <collected> --out problem_card.json`——脚本前置检查可立案性（非 FAIL / 复现不稳 `BLOCKED_FLAKY` / 采集失败一律退 4 且不落盘，stderr 带 `REASON:`），通过后产出 `problem_card.json`（`source: bot_oob`，格式契约见 `$PAGENT/examples/problem_card.example.json`）并默认原子回填 `problem_card_ref` 进 packet（`--no-backfill-ref` 关闭）；脚本不可用或拒绝且主控判断应立案时，回退人工构造（前置确认可稳定复现），回退属例外而非常态。
-3. 立案后进入 npu-precision-agent 深路径（triage → 定位 → 修复 → 验证），其编排与门禁见该仓 `AGENTS.md` / `workflows/pipeline.md`——bot 主控此时只做委托与验收，不代行深路径内部编排。
+3. **自动委托（P3，已自动化）**：`oob_handoff` 退 0 后，主控备 staging 四件套（立案卡 + 已回填 `problem_card_ref` 的证据包 + `request.json` + `collected.json`，拷入任务 run 目录 `deep-handoff/`），随后按下方**委托 prompt 模板**（单一真值）spawn npu-precision-agent 深路径 primary——`$PAGENT` 只读引用，写只落 run dir；run dir 由深路径按其 P0 runbook 自建（`<run>/runs/<task_id>/`），`run.json` 记 `entry: bot_oob`。**立案即 owner 切换**：深路径 primary 是 P0–P7 唯一 owner，主控对 `progress.md` 只读旁观，不代行内部编排。委托不可用或深路径不可触达时回退人工（把 staging 路径与模板内容交人工触发），回退属例外；委托失败/超时不可静默——tracker 记录并提示人工接管。
+4. **闭环验收（verifier PASS ≠ 阶段过）**：深路径报修复（`verification_report.json` PASS）时，主控**重跑探针五步**（同接力棒锚点、同 case 集）——`verdict=PASS` 才记账阶段通过并 `emit_baseline` 更新接力棒；仍 FAIL → 修复未生效，回深路径或转人工。**不允许弱档签字降级用于本次验收重跑**。终态记账：`run.json.terminal_state` + tracker 对应阶段行备注；`BLOCKED_ENVIRONMENT` 回三向路由，`BLOCKED_FLAKY` 补跑复现后可再委托一次。
+
+### 委托 prompt 模板（bot 主控 → 深路径 primary，五段固定）
+
+```text
+你是 model-precision-adapt primary agent（npu-precision-agent）。
+1. 先 Read $PAGENT/AGENTS.md 与 $PAGENT/workflows/pipeline.md，本任务走
+   P0-O 外部立案变体（run.json entry=bot_oob）；
+2. 输入：staging 四件套在 <run>/deep-handoff/ —— problem_card.json
+   （source=bot_oob）/ precision_evidence_packet.json / request.json /
+   collected.json；$PAGENT 只读，写只落 run dir；
+3. run dir 由你按 P0 runbook 自建于 <run>/runs/<task_id>/，把 staging
+   四件套拷入并在 run.json 记 entry: bot_oob + origin/stage/fingerprint；
+4. 协作模式：托管——P0 协作模式确认点与 P1 卡片确认点由委托方预签
+   （bot 主控已裁决 FAIL 并立案）；深路径内部编排与门禁照常执行；
+5. 停机条件：P7 终态 / 任意 BLOCKED_* / 需人工保留事项——中断并回报；
+   产出：localization_report.md、patch.diff + fix_proposal.md、
+   verification_report.json，过程记 progress.md（委托方只读旁观）。
+```
 
 ## 6. 红线（两侧共同遵守）
 
